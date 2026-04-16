@@ -1,0 +1,389 @@
+          <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanación de Familias - El Juego Completo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Poppins:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #0f172a;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .game-font { font-family: 'Luckiest Guy', cursive; letter-spacing: 2px; }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+        }
+
+        .option-btn {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+        }
+
+        .option-btn:hover {
+            transform: scale(1.01);
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .option-selected {
+            background: #3b82f6 !important;
+            color: white !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+            border-color: #60a5fa !important;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: #1e293b;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #10b981);
+            transition: width 0.4s ease;
+        }
+
+        .heart {
+            color: #ef4444;
+            filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.4));
+        }
+
+        .history-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1/1;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        @media print {
+            body { background: white !important; color: black !important; padding: 0; }
+            .glass-panel { background: white !important; border: 1px solid #ddd !important; box-shadow: none !important; margin: 0; width: 100%; }
+            #back-btn, #next-btn, .progress-bar, audio, .hud-extra, #music-toggle { display: none !important; }
+            .history-card { border: 1px solid #000 !important; color: black !important; background: white !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Game Container -->
+    <div id="game-container" class="w-full max-w-2xl glass-panel p-6 shadow-2xl relative">
+        
+        <!-- HUD -->
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-3">
+                    <!-- Music Control Button -->
+                    <button id="music-toggle" onclick="toggleMusic()" class="bg-slate-800/80 hover:bg-slate-700 w-10 h-10 flex items-center justify-center rounded-full border border-slate-700 text-slate-300 transition-all">
+                        <i id="music-icon" class="fas fa-volume-up"></i>
+                    </button>
+                    <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
+                        <span class="text-[10px] uppercase font-bold text-slate-400">Pregunta</span>
+                        <span id="current-index" class="font-bold text-blue-400 text-sm">1/26</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-end gap-1 hud-extra">
+                <div id="lives-container" class="flex gap-0.5 text-sm flex-wrap justify-end max-w-[180px]">
+                    <!-- Hearts -->
+                </div>
+                <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
+                    <i class="fas fa-star text-yellow-400 text-xs"></i>
+                    <span id="score" class="font-bold text-yellow-400 text-sm">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar mb-6">
+            <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="text-center py-8">
+            <h1 class="text-3xl md:text-5xl font-extrabold mb-4 game-font text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400 uppercase">Sanación de Familias</h1>
+            <p class="text-slate-300 mb-8 max-w-md mx-auto">Completa las 26 preguntas basadas en los capítulos 1 al 4. ¡Demuestra tu conocimiento!</p>
+            <button onclick="startGame()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-12 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 text-xl uppercase tracking-widest">
+                ¡JUGAR!
+            </button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="hidden">
+            <h2 id="question-text" class="text-lg md:text-xl font-bold mb-6 leading-snug min-h-[3rem]"></h2>
+            
+            <div id="options-grid" class="grid gap-3 mb-6">
+                <!-- Options -->
+            </div>
+
+            <div class="flex justify-between items-center border-t border-slate-700 pt-6">
+                <button id="back-btn" onclick="goBack()" class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-semibold">
+                    <i class="fas fa-chevron-left"></i> Atrás
+                </button>
+                <button id="next-btn" onclick="submitAnswer()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg disabled:opacity-30 disabled:grayscale" disabled>
+                    Siguiente <i class="fas fa-chevron-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="hidden text-center py-4">
+            <h2 class="text-3xl font-bold mb-2 game-font text-yellow-400 uppercase">¡Evaluación Finalizada!</h2>
+            <div id="final-stats" class="mb-6"></div>
+            
+            <div class="bg-slate-900/60 rounded-2xl p-4 mb-6 border border-slate-700 shadow-inner">
+                <h3 class="font-bold text-slate-500 mb-4 uppercase text-[10px] tracking-[0.2em]">Mapa de Respuestas</h3>
+                <div id="history-list" class="grid grid-cols-6 sm:grid-cols-9 gap-2">
+                    <!-- Cards -->
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 justify-center print:hidden">
+                <button onclick="restartGame()" class="bg-slate-700 hover:bg-slate-600 text-white py-4 px-12 rounded-xl font-bold transition-all flex-1 shadow-lg hover:scale-105 active:scale-95 uppercase tracking-wider">
+                    <i class="fas fa-undo-alt mr-2"></i> Volver a empezar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Effects -->
+    <audio id="sfx-select" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+    <audio id="sfx-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+    <audio id="sfx-wrong" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
+    <audio id="bg-music" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"></audio>
+
+    <script>
+        const questions = [
+            { q: "1. ¿Cuál es la razón fundamental por la que el autor afirma que ciertos problemas familiares persistentes no vienen del Señor?", a: ["Porque el yugo de Jesús es suave y su carga es liviana.", "Porque la Biblia dice que las familias cristianas no deben tener problemas.", "Porque Dios delega todo el control del sufrimiento al libre albedrío.", "Porque Dios solo permite el sufrimiento en personas sin fe."], correct: 0 },
+            { q: "2. Según la Introducción, si la libertad que trajo Jesús fuera solo para la vida eterna, ¿qué habría hecho Él?", a: ["Habría dado instrucciones solo a los apóstoles.", "Habría limitado sus milagros a la resurrección.", "No habría necesitado morir en la cruz.", "Habría esperado a nuestra muerte para otorgárnosla en el cielo."], correct: 3 },
+            { q: "3. En el Capítulo 1, ¿cuál es el propósito primordial por el cual Dios sana al ser humano?", a: ["Para demostrar Su poder absoluto sobre la ciencia médica.", "Para que la persona no necesite volver a pedir ayuda.", "Para establecer una comunicación libre y sin obstáculos con Su criatura.", "Para evitar que los seres humanos sientan dolor físico."], correct: 2 },
+            { q: "4. ¿Qué conclusión se puede sacar si una dolencia física desaparece después de una oración de sanación espiritual?", a: ["Que la persona alcanzó un nivel de santidad superior.", "Que la medicina natural es totalmente ineficiente.", "Que el problema era puramente psicológico.", "Que existía una causa o influencia espiritual en ese problema físico."], correct: 3 },
+            { q: "5. En la parábola de los talentos (Capítulo 2), ¿cuál es el error fatal del servidor que recibió un solo talento?", a: ["Intentar robar el talento para su beneficio.", "No tener la capacidad intelectual para invertir.", "Perder el dinero en negocios riesgosos.", "Tener un concepto errado de su amo, viéndolo como un hombre duro."], correct: 3 },
+            { q: "6. ¿Cómo define el autor el 'Sufrimiento Necesario'?", a: ["Castigo directo de Dios por pecados personales.", "Falta de recursos económicos para la familia.", "Cualquier enfermedad genética heredada.", "Como la Cruz de Cristo, medio necesario para la salvación."], correct: 3 },
+            { q: "7. Según el Capítulo 3, ¿cuál fue el descubrimiento clave del autor al investigar la sanación del árbol familiar?", a: ["A veces el individuo no sana porque es la familia completa la que necesita sanación.", "Que la confesión individual es el único requisito.", "Que se requiere la presencia física de todos los parientes.", "Que la medicina y la oración nunca deben mezclarse."], correct: 0 },
+            { q: "8. En el caso de 'Joe' (Capítulo 3), ¿qué fue lo que finalmente rompió el ciclo de sus pecados repetitivos?", a: ["Cambiar de ciudad para alejarse de tentaciones.", "Asistir a más de cincuenta sesiones de psicoterapia.", "Entender que sus problemas estaban 'enchufados' en su familia.", "Realizar una penitencia física extrema."], correct: 2 },
+            { q: "9. ¿Cuál es el 'Primer Punto Cardinal' mencionado en el Capítulo 4?", a: ["El poder del nombre de Jesús.", "Satanás es un enemigo que no puede ser vencido.", "Fuimos creados con naturaleza física y espiritual simultáneamente.", "Debemos perdonar a todos antes del anochecer."], correct: 2 },
+            { q: "10. El 'Segundo Punto Cardinal' establece que estamos vinculados. ¿Cuál es la intención original de Dios con este vínculo?", a: ["Que los hijos paguen por los errores de los padres.", "Asegurar que nadie pueda ser realmente libre.", "Hacernos depender económicamente de familiares.", "Que las bendiciones se pasen automáticamente de generación en generación."], correct: 3 },
+            { q: "11. Según el Capítulo 4, ¿qué sucede con la 'brecha' que la ciencia no puede llenar entre un maestro y un estudiante?", a: ["Se llena automáticamente con psicología.", "Es donde Dios realiza milagros de conocimiento.", "Desaparece si el estudiante ignora al maestro.", "Es recorrida por una comunicación espiritual entre ambos."], correct: 3 },
+            { q: "12. ¿Cuál es la premisa del 'Tercer Punto Cardinal' respecto a las decisiones en nuestra vida?", a: ["Solo las decisiones tras los 21 años tienen peso.", "Cada persona es 100% responsable desde el nacimiento.", "Nadie influye si tenemos voluntad fuerte.", "Las decisiones más importantes y fundamentales fueron tomadas por otros."], correct: 3 },
+            { q: "13. En el contexto del Capítulo 4, ¿cómo utiliza Satanás el sistema de vínculos creado por Dios?", a: ["No puede tocarlo por ser diseño divino.", "Lo infiltra para hacerlo trabajar a su favor (carga).", "Lo destruye para que vivamos aislados.", "Lo usa solo para atacar a no creyentes."], correct: 1 },
+            { q: "14. ¿Por qué el autor enfatiza que 'el pasado es estable' en relación con los problemas familiares?", a: ["Porque es imposible cambiar lo ocurrido.", "Porque los problemas tienden a permanecer o empeorar si no se resuelven en la raíz.", "Porque Dios prefiere mirar adelante.", "Porque el tiempo es una ilusión."], correct: 1 },
+            { q: "15. De acuerdo con el Capítulo 1, ¿qué papel juega el 'conocimiento' en la sanación?", a: ["Sustituye por completo la oración.", "Es requisito solo para teólogos.", "Es el primer paso necesario para que la oración sea efectiva.", "No es necesario si hay fe ciega."], correct: 2 },
+            { q: "16. En el Capítulo 2, ¿cuál es la perspectiva del autor sobre el 'Castigo de Dios'?", a: ["Jesús eliminó toda consecuencia física.", "Es una herramienta educativa necesaria.", "A menudo son patrones que oponen nuestro espíritu contra Dios.", "Dios castiga hasta la décima generación."], correct: 2 },
+            { q: "17. ¿Qué representa el dibujo de un hombre con una sombrilla y alas que bloquea la luz?", a: ["Ángel de la guarda protegiendo.", "Persona que ora con mucha fe.", "Dios Padre descansando.", "Satanás bloqueando gracias y bendiciones."], correct: 3 },
+            { q: "18. Según el Capítulo 1, ¿cuál es la condición 'fundamental' para descartar la causa espiritual?", a: ["Si el médico dice que es genético.", "Si la persona es muy joven.", "Cualquier enfermedad incurable.", "Solo tras aplicar base espiritual y ver si ocurre la sanación física."], correct: 3 },
+            { q: "19. En el Capítulo 3, ¿qué le dio confianza al autor para sentirse 'experto' con Joe?", a: ["Joe era un amigo de la infancia.", "Ya vio milagros similares en Uganda.", "Su investigación teórica previa de dos años.", "Una voz audible de Dios."], correct: 2 },
+            { q: "20. ¿Cuál es la función del 'Quinto Punto Cardinal' (Capítulo 4)?", a: ["Nombre para usar al final de la vida.", "Necesidad de estudiar teología.", "Sirve para maldecir enemigos.", "Es el poder que nos permite ejecutar la sanación y libertad."], correct: 3 },
+            { q: "21. ¿Qué relación establece el autor entre la salud física y la sanación del árbol genealógico?", a: ["Son procesos totalmente independientes.", "La salud física depende 100% de la dieta.", "La sanación de la raíz familiar suele traer sanidad física.", "La Biblia prohíbe buscar sanidad física."], correct: 2 },
+            { q: "22. ¿Cómo describe el autor la 'atmósfera' de una familia con ataduras espirituales?", a: ["Como un lugar de paz constante.", "Como una presión invisible o carga pesada recurrente.", "Como un ambiente de riqueza material.", "Como una familia sin ningún defecto."], correct: 1 },
+            { q: "23. En el Cap. 2, ¿qué significa 'enterrar el talento' en términos de sanación?", a: ["Guardar dinero para el futuro.", "No usar la autoridad de Cristo por miedo o ignorancia.", "Ser humilde y no presumir dones.", "Hacer un funeral simbólico."], correct: 1 },
+            { q: "24. ¿Cuál es la herramienta principal que el autor propone para cortar las ataduras?", a: ["La fuerza de voluntad.", "La oración de sanación de familias en el nombre de Jesús.", "La hipnosis regresiva.", "El olvido total del pasado."], correct: 1 },
+            { q: "25. Según el texto, ¿puede una sola persona sanar a toda su familia?", a: ["No, todos deben estar presentes.", "Sí, a través de la intercesión y oración de autoridad.", "Solo si esa persona es un sacerdote.", "No, cada uno se sana por separado obligatoriamente."], correct: 1 },
+            { q: "26. ¿Cuál es el mensaje final de esperanza del Capítulo 4?", a: ["Que el pasado nos condena para siempre.", "Que en Cristo somos criaturas nuevas y podemos ser libres de las ataduras.", "Que debemos sufrir en silencio.", "Que la libertad solo llega después de la muerte."], correct: 1 }
+        ];
+
+        let state = {
+            currentIndex: 0,
+            score: 0,
+            lives: 26,
+            userAnswers: [], 
+            answersHistory: [],
+            isMusicPlaying: false
+        };
+
+        const elements = {
+            start: document.getElementById('start-screen'),
+            quiz: document.getElementById('quiz-screen'),
+            result: document.getElementById('result-screen'),
+            question: document.getElementById('question-text'),
+            options: document.getElementById('options-grid'),
+            score: document.getElementById('score'),
+            index: document.getElementById('current-index'),
+            progress: document.getElementById('progress-fill'),
+            lives: document.getElementById('lives-container'),
+            history: document.getElementById('history-list'),
+            nextBtn: document.getElementById('next-btn'),
+            music: document.getElementById('bg-music'),
+            musicIcon: document.getElementById('music-icon')
+        };
+
+        function playSfx(id) {
+            const sound = document.getElementById(id);
+            if(sound) {
+                sound.currentTime = 0;
+                sound.play().catch(() => {});
+            }
+        }
+
+        function toggleMusic() {
+            if (state.isMusicPlaying) {
+                elements.music.pause();
+                elements.musicIcon.className = 'fas fa-volume-mute';
+                state.isMusicPlaying = false;
+            } else {
+                elements.music.volume = 0.1;
+                elements.music.play().catch(() => {});
+                elements.musicIcon.className = 'fas fa-volume-up';
+                state.isMusicPlaying = true;
+            }
+        }
+
+        function updateHUD() {
+            elements.score.innerText = state.score;
+            elements.index.innerText = `${state.currentIndex + 1}/${questions.length}`;
+            elements.progress.style.width = `${((state.currentIndex) / questions.length) * 100}%`;
+            
+            elements.lives.innerHTML = '';
+            for(let i=0; i<state.lives; i++) {
+                elements.lives.innerHTML += `<i class="fas fa-heart heart"></i>`;
+            }
+        }
+
+        function startGame() {
+            if(!state.isMusicPlaying) {
+                toggleMusic();
+            }
+            elements.start.classList.add('hidden');
+            elements.quiz.classList.remove('hidden');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const q = questions[state.currentIndex];
+            elements.question.innerText = q.q;
+            elements.options.innerHTML = '';
+            elements.nextBtn.disabled = true;
+
+            q.a.forEach((opt, i) => {
+                const letter = String.fromCharCode(65 + i); 
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full text-left p-4 rounded-xl border border-slate-700 bg-slate-800/40 flex items-center gap-4";
+                
+                const isSelected = state.userAnswers[state.currentIndex] === i;
+                if(isSelected) {
+                    btn.classList.add('option-selected');
+                    elements.nextBtn.disabled = false;
+                }
+
+                btn.innerHTML = `
+                    <span class="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-slate-900 rounded-lg font-bold text-blue-400 border border-slate-700 text-xs">${letter}</span>
+                    <span class="text-sm md:text-base leading-tight">${opt}</span>
+                `;
+                btn.onclick = () => selectOption(i);
+                elements.options.appendChild(btn);
+            });
+            updateHUD();
+        }
+
+        function selectOption(index) {
+            playSfx('sfx-select');
+            state.userAnswers[state.currentIndex] = index;
+            const buttons = elements.options.querySelectorAll('.option-btn');
+            buttons.forEach((b, i) => {
+                b.classList.toggle('option-selected', i === index);
+            });
+            elements.nextBtn.disabled = false;
+        }
+
+        function submitAnswer() {
+            const q = questions[state.currentIndex];
+            const userIdx = state.userAnswers[state.currentIndex];
+            const letter = String.fromCharCode(65 + userIdx);
+
+            if(userIdx === q.correct) {
+                state.score += 100;
+                playSfx('sfx-correct');
+            } else {
+                state.lives--;
+                playSfx('sfx-wrong');
+            }
+
+            state.answersHistory[state.currentIndex] = letter;
+
+            if(state.lives <= 0 || state.currentIndex >= questions.length - 1) {
+                state.currentIndex = questions.length;
+                updateHUD();
+                setTimeout(endGame, 500);
+            } else {
+                state.currentIndex++;
+                renderQuestion();
+            }
+        }
+
+        function goBack() {
+            if(state.currentIndex > 0) {
+                state.currentIndex--;
+                renderQuestion();
+            }
+        }
+
+        function endGame() {
+            elements.quiz.classList.add('hidden');
+            elements.result.classList.remove('hidden');
+            
+            const accuracy = Math.round((state.score / (questions.length * 100)) * 100);
+            
+            document.getElementById('final-stats').innerHTML = `
+                <div class="grid grid-cols-2 gap-4 mt-2 max-w-xs mx-auto">
+                    <div class="p-3 bg-slate-800/80 rounded-2xl border border-slate-700">
+                        <div class="text-slate-500 text-[9px] uppercase font-bold">Puntaje</div>
+                        <div class="text-2xl font-bold text-yellow-400">${state.score}</div>
+                    </div>
+                    <div class="p-3 bg-slate-800/80 rounded-2xl border border-slate-700">
+                        <div class="text-slate-500 text-[9px] uppercase font-bold">Acierto</div>
+                        <div class="text-2xl font-bold text-blue-400">${accuracy}%</div>
+                    </div>
+                </div>
+            `;
+
+            elements.history.innerHTML = '';
+            questions.forEach((q, i) => {
+                const userChoice = state.userAnswers[i];
+                const letter = state.answersHistory[i] || "-";
+                const isCorrect = userChoice === q.correct;
+                
+                const card = document.createElement('div');
+                card.className = `history-card border ${isCorrect ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400' : 'bg-red-900/30 border-red-500/50 text-red-400'}`;
+                card.innerHTML = `
+                    <span class="text-[8px] opacity-40">${i+1}</span>
+                    <span class="text-lg">${letter}</span>
+                `;
+                elements.history.appendChild(card);
+            });
+        }
+
+        function restartGame() {
+            state = {
+                currentIndex: 0,
+                score: 0,
+                lives: 26,
+                userAnswers: [],
+                answersHistory: [],
+                isMusicPlaying: state.isMusicPlaying
+            };
+            elements.result.classList.add('hidden');
+            elements.start.classList.remove('hidden');
+            updateHUD();
+        }
+
+        window.onload = updateHUD;
+    </script>
+</body>
+</html>
